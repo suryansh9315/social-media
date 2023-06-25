@@ -1,6 +1,9 @@
 import Header from "@/components/Header";
 import "./globals.css";
 import { Inter } from "next/font/google";
+import ClientSession from "@/components/ClientSession";
+import ClientRecoil from "@/components/ClientRecoil";
+import Modal from "@/components/Modal";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -12,9 +15,14 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={inter.className && 'scrollbar-hide'}>
-        <Header />
-        {children}
+      <body className={inter.className && "scrollbar-hide"}>
+        <ClientSession>
+          <ClientRecoil>
+            <Header />
+            <Modal />
+            {children}
+          </ClientRecoil>
+        </ClientSession>
       </body>
     </html>
   );

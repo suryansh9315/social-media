@@ -1,23 +1,26 @@
 import React, { useEffect, useState } from "react";
 import { faker } from "@faker-js/faker";
 import Post from "./Post";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { db } from "../../firebase";
 
 const Posts = () => {
-  const [suggestions, setSuggestions] = useState([]);
+  const [posts, setPosts] = useState([]);
 
-  useEffect(() => {
-    const suggestions = [...Array(20)].map((_, i) => ({
-      username: faker.internet.userName(),
-      avatar: faker.image.avatar(),
-      img: faker.image.url(),
-      caption: faker.person.bio(),
-      id: i,
-    }));
-    setSuggestions(suggestions);
-  }, []);
+  useEffect(
+    () =>
+      onSnapshot(
+        query(collection(db, "posts"), orderBy("timeStamp", "desc")),
+        (snapshot) => {
+          setPosts(snapshot.docs);
+        }
+      ),
+    [db]
+  );
+
   return (
     <div>
-      {suggestions.map((post) => (
+      {posts.map((post) => (
         <Post key={post.id} post={post} />
       ))}
     </div>
