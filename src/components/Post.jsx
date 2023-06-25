@@ -7,6 +7,7 @@ import {
   BookmarkIcon,
   FaceSmileIcon,
 } from "@heroicons/react/24/outline";
+import { HeartIcon as HeartIconFilled } from "@heroicons/react/24/solid";
 import { useSession } from "next-auth/react";
 import {
   addDoc,
@@ -15,6 +16,9 @@ import {
   onSnapshot,
   query,
   orderBy,
+  setDoc,
+  doc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import Moment from "react-moment";
@@ -23,6 +27,8 @@ const Post = ({ post }) => {
   const { data: session } = useSession();
   const [comments, setComments] = useState([]);
   const [comment, setComment] = useState("");
+  const [likes, setLikes] = useState([]);
+  const [hasLiked, setHasLiked] = useState(false);
 
   useEffect(
     () =>
@@ -33,10 +39,25 @@ const Post = ({ post }) => {
         ),
         (snapshot) => {
           setComments(snapshot.docs);
+          console.log(snapshot.docs);
         }
       ),
-    [db]
+    [db, post.id]
   );
+
+  useEffect(
+    () =>
+      onSnapshot(collection(db, "posts", post.id, "likes"), (snapshot) => {
+        setLikes(snapshot.docs);
+      }),
+    [db, post.id]
+  );
+
+  useEffect(() => {
+    setHasLiked(
+      likes.findIndex((like) => like.id === session?.user?.uid) !== -1
+    );
+  }, [likes]);
 
   const sendComment = async (e) => {
     e.preventDefault();
@@ -48,6 +69,18 @@ const Post = ({ post }) => {
       userImage: session.user.image,
       timeStamp: serverTimestamp(),
     });
+  };
+
+  const sendDeleteLike = async () => {
+    if (hasLiked) {
+      await deleteDoc(doc(db, "posts", post.id, "likes", session.user.uid));
+      console.log("Like Added");
+    } else {
+      await setDoc(doc(db, "posts", post.id, "likes", session.user.uid), {
+        username: session.user.username,
+      });
+      console.log("Like Deleted");
+    }
   };
 
   return (
@@ -65,7 +98,14 @@ const Post = ({ post }) => {
       {session && (
         <div className="flex items-center justify-between px-4 pt-4">
           <div className="flex space-x-4">
-            <HeartIcon className="btn" />
+            {hasLiked ? (
+              <HeartIconFilled
+                onClick={sendDeleteLike}
+                className="btn text-red-500"
+              />
+            ) : (
+              <HeartIcon onClick={sendDeleteLike} className="btn" />
+            )}
             <ChatBubbleOvalLeftIcon className="btn" />
             <PaperAirplaneIcon className="btn" />
           </div>
@@ -77,7 +117,7 @@ const Post = ({ post }) => {
         {post.data().caption}
       </p>
       {comments.length > 1 && (
-        <div className="ml-10 h-20 overflow-y-scroll scrollbar-thumb-black scrollbar-thin">
+        <div className="ml-5 h-20 overflow-y-scroll scrollbar-thumb-black scrollbar-thin">
           {comments.map((comment) => (
             <div key={comment.id} className="flex items-center space-x-2 mb-3">
               <img
@@ -89,7 +129,9 @@ const Post = ({ post }) => {
                 <span className="font-semibold">{comment.data().username}</span>{" "}
                 {comment.data().comment}
               </p>
-              <Moment className="pr-5 text-xs" fromNow>{comment.data().timeStamp?.toDate()}</Moment>
+              <Moment className="pr-5 text-xs" fromNow>
+                {comment.data().timeStamp?.toDate()}
+              </Moment>
             </div>
           ))}
         </div>
